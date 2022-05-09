@@ -12,6 +12,7 @@
 
 #include <boost/program_options.hpp>
 
+#include <cfloat>
 #include <fstream>
 
 template <typename MemorySpace>
@@ -90,13 +91,13 @@ struct ProjectPointDistance
                                   int const primitive_index) const
   {
     auto const &ray = ArborX::getGeometry(predicate);
-    float t;
-    float u;
-    float v;
+    float tmin;
+    float tmax;
     int const i = getData(predicate);
-    if (rayTriangleIntersect(ray, triangles(primitive_index), t, u, v))
+    // intersects only if triangle is in front of the ray
+    if (intersection(ray, triangles(primitive_index), tmin, tmax) && (tmax >= 0.f))
     {
-      distance(i) = t;
+      distance(i) = tmin;
     }
   }
 };
@@ -211,7 +212,7 @@ void outputVTK(
   std::vector<ArborX::Point> point_cloud;
   for (unsigned int i = 0; i < full_point_cloud.extent(0); ++i)
   {
-    if (full_point_cloud(i)[0] < KokkosExt::ArithmeticTraits::max<float>::value)
+    if (full_point_cloud(i)[0] < FLT_MAX)
     {
       point_cloud.emplace_back(full_point_cloud(i)[0], full_point_cloud(i)[1],
                                full_point_cloud(i)[2]);
@@ -320,7 +321,7 @@ int main(int argc, char *argv[])
           }
           else
           {
-            float max_value = KokkosExt::ArithmeticTraits::max<float>::value;
+            float max_value = FLT_MAX;
             point_cloud(i) = {max_value, max_value, max_value};
           }
         });
